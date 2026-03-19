@@ -4,6 +4,7 @@
 AppRegistrationCredentialExpiry_CL
 | summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
 | where ObjectType == 'EnterpriseApp'
+| where column_ifexists('AppOwnerOrganizationId', '') == TenantId
 | project ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName,
     EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired
 | order by DaysToExpiry asc, ApplicationDisplayName asc

@@ -469,96 +469,171 @@ Write-Host "`n── Step 4: Alerts ──────────────�
 # Switch to the subscription that owns the resource group
 Invoke-AzCli -Arguments @('account', 'set', '--subscription', $rgSubId) | Out-Null
 
-# Action group
-Write-Host "    Creating action group: $ActionGroupName" -ForegroundColor Cyan
-$agArgs = @(
-    'monitor', 'action-group', 'create',
-    '--name', $ActionGroupName,
-    '--resource-group', $ResGroup,
-    '--short-name', 'CredInv'
-)
-$emailIdx = 0
-foreach ($email in $EmailAddresses) {
-    $emailIdx++
-    $agArgs += @('--action', 'email', "Email$emailIdx", $email)
+# Action group — load from monitor-action-groups/*.json
+$agDir = Join-Path $PSScriptRoot '..\monitor-action-groups'
+$agFiles = Get-ChildItem -Path $agDir -Filter '*.json' -ErrorAction SilentlyContinue
+
+if (-not $agFiles -or $agFiles.Count -eq 0) {
+    Write-Warning "No action group JSON files found in $agDir — using defaults."
+    $agShortName = 'CredInv'
+} else {
+    Write-Host "    Found $($agFiles.Count) action group definition(s) in monitor-action-groups/" -ForegroundColor Cyan
 }
-$agArgs += ConvertTo-TagArgs -Tags $Tags
-Invoke-AzCli -Arguments $agArgs | Out-Null
+
+foreach ($agFile in $agFiles) {
+    $agDef = Get-Content -LiteralPath $agFile.FullName -Raw | ConvertFrom-Json
+
+    # Allow deploy-config.yaml actionGroupName to override the JSON name
+    $agName = if ($ActionGroupName) { $ActionGroupName } else { $agDef.name }
+    $agShortName = if ($agDef.shortName) { $agDef.shortName } else { 'CredInv' }
+
+    Write-Host "    Creating action group: $agName (from $($agFile.Name))" -ForegroundColor Cyan
+
+    $agArgs = @(
+        'monitor', 'action-group', 'create',
+        '--name', $agName,
+        '--resource-group', $ResGroup,
+        '--short-name', $agShortName
+    )
+
+    # Populate email receivers: use deploy-config.yaml emailAddresses, fall back to JSON
+    $emailList = if ($EmailAddresses -and $EmailAddresses.Count -gt 0) { $EmailAddresses } else {
+        @($agDef.emailReceivers | Where-Object { $_.emailAddress } | ForEach-Object { $_.emailAddress })
+    }
+    $emailIdx = 0
+    foreach ($email in $emailList) {
+        $emailIdx++
+        $receiverName = if ($agDef.emailReceivers -and $agDef.emailReceivers[$emailIdx - 1].name) {
+            $agDef.emailReceivers[$emailIdx - 1].name
+        } else { "Email$emailIdx" }
+        $agArgs += @('--action', 'email', $receiverName, $email)
+    }
+
+    # Add SMS receivers from JSON
+    if ($agDef.smsReceivers) {
+        foreach ($sms in $agDef.smsReceivers) {
+            if ($sms.phoneNumber) {
+                $agArgs += @('--action', 'sms', $sms.name, $sms.countryCode, $sms.phoneNumber)
+            }
+        }
+    }
+
+    # Add webhook receivers from JSON
+    if ($agDef.webhookReceivers) {
+        foreach ($wh in $agDef.webhookReceivers) {
+            if ($wh.serviceUri) {
+                $agArgs += @('--action', 'webhook', $wh.name, $wh.serviceUri)
+            }
+        }
+    }
+
+    $agArgs += ConvertTo-TagArgs -Tags $Tags
+    Invoke-AzCli -Arguments $agArgs | Out-Null
+    Write-Host "    Created action group: $agName" -ForegroundColor Green
+}
+
+# Resolve the action group name for alert references (use config override or first JSON name)
+$resolvedAgName = if ($ActionGroupName) { $ActionGroupName }
+                  elseif ($agFiles -and $agFiles.Count -gt 0) {
+                      (Get-Content -LiteralPath $agFiles[0].FullName -Raw | ConvertFrom-Json).name
+                  } else { 'ag-credential-inventory' }
 
 $actionGroupId = Get-AzCliScalar -Arguments @(
     'monitor', 'action-group', 'show',
-    '--name', $ActionGroupName, '--resource-group', $ResGroup,
+    '--name', $resolvedAgName, '--resource-group', $ResGroup,
     '--query', 'id', '-o', 'tsv'
 )
 
-# Define alerts
-$alerts = @(
-    @{
-        Name        = 'alert-appreg-expiry-30-days'
-        Description = 'App registration secret or certificate expires within 30 days.'
-        Query       = @"
-AppRegistrationCredentialExpiry_CL
-| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
-| where CredentialType != 'None' and DaysToExpiry < 30
-| count
-"@
-    },
-    @{
-        Name        = 'alert-kv-secret-expires-30-days'
-        Description = 'Key Vault secret expires within 30 days.'
-        Query       = @"
-KeyVaultCredentialInventory_CL
-| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
-| where ItemType == 'Secret' and HasExpiration == true and DaysToExpiry < 30
-| count
-"@
-    },
-    @{
-        Name        = 'alert-kv-cert-expires-30-days'
-        Description = 'Key Vault certificate expires within 30 days.'
-        Query       = @"
-KeyVaultCredentialInventory_CL
-| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
-| where ItemType == 'Certificate' and HasExpiration == true and DaysToExpiry < 30
-| count
-"@
-    },
-    @{
-        Name        = 'alert-kv-key-expires-30-days'
-        Description = 'Key Vault key expires within 30 days.'
-        Query       = @"
-KeyVaultCredentialInventory_CL
-| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
-| where ItemType == 'Key' and HasExpiration == true and DaysToExpiry < 30
-| count
-"@
-    }
-)
+# ── Load alert definitions from monitor-alerts/*.json ────────────────────────
+$alertsDir = Join-Path $PSScriptRoot '..\monitor-alerts'
+$alertFiles = Get-ChildItem -Path $alertsDir -Filter '*.json' -ErrorAction SilentlyContinue
 
-foreach ($alert in $alerts) {
+if (-not $alertFiles -or $alertFiles.Count -eq 0) {
+    Write-Warning "No alert JSON files found in $alertsDir — skipping alert creation."
+} else {
+    Write-Host "    Found $($alertFiles.Count) alert definition(s) in monitor-alerts/" -ForegroundColor Cyan
+}
+
+foreach ($alertFile in $alertFiles) {
+    $alertDef = Get-Content -LiteralPath $alertFile.FullName -Raw | ConvertFrom-Json
+
     $alertExists = Test-AzCliCommand -Arguments @(
         'monitor', 'scheduled-query', 'show',
-        '--name', $alert.Name, '--resource-group', $ResGroup
+        '--name', $alertDef.name, '--resource-group', $ResGroup
     )
     if ($alertExists) {
-        Write-Host "    Alert exists: $($alert.Name)" -ForegroundColor Gray
+        Write-Host "    Alert exists: $($alertDef.name)" -ForegroundColor Gray
         continue
     }
-    Write-Host "    Creating alert: $($alert.Name)" -ForegroundColor Cyan
-    Invoke-AzCli -Arguments @(
-        'monitor', 'scheduled-query', 'create',
-        '--name', $alert.Name,
-        '--resource-group', $ResGroup,
-        '--scopes', $WorkspaceId,
-        '--condition', "count 'GreaterThan' 0",
-        '--condition-query', $alert.Query,
-        '--description', $alert.Description,
-        '--evaluation-frequency', '24h',
-        '--window-size', '24h',
-        '--severity', '2',
-        '--action-groups', $actionGroupId,
-        '--auto-mitigate', 'false'
-    ) | Out-Null
+
+    Write-Host "    Creating alert: $($alertDef.name)" -ForegroundColor Cyan
+
+    # Build the alert via ARM REST API to support dimensions (az monitor scheduled-query
+    # CLI does not natively support dimension-split alerts).
+    $alertResourceId = "/subscriptions/$rgSubId/resourceGroups/$ResGroup/providers/Microsoft.Insights/scheduledQueryRules/$($alertDef.name)"
+
+    # Build dimension array for ARM
+    $armDimensions = @()
+    if ($alertDef.dimensions -and $alertDef.dimensions.Count -gt 0) {
+        foreach ($dim in $alertDef.dimensions) {
+            $armDimensions += @{
+                name     = $dim.name
+                operator = $dim.operator
+                values   = @($dim.values)
+            }
+        }
+    }
+
+    # Build actions object with optional customProperties
+    $actionsObj = @{
+        actionGroups = @($actionGroupId)
+    }
+    if ($alertDef.customProperties) {
+        $cp = @{}
+        $alertDef.customProperties.PSObject.Properties | ForEach-Object { $cp[$_.Name] = $_.Value }
+        $actionsObj['customProperties'] = $cp
+    }
+
+    # Build properties with optional displayName for dynamic email subjects
+    $alertProperties = @{
+        description         = $alertDef.description
+        severity            = [int]$alertDef.severity
+        enabled             = $true
+        evaluationFrequency = $alertDef.evaluationFrequency
+        windowSize          = $alertDef.windowSize
+        scopes              = @($WorkspaceId)
+        autoMitigate        = [bool]$alertDef.autoMitigate
+        criteria            = @{
+            allOf = @(
+                @{
+                    query           = $alertDef.query
+                    timeAggregation = 'Count'
+                    operator        = $alertDef.conditionOperator
+                    threshold       = [int]$alertDef.conditionThreshold
+                    dimensions      = $armDimensions
+                    failingPeriods  = @{
+                        numberOfEvaluationPeriods = 1
+                        minFailingPeriodsToAlert  = 1
+                    }
+                }
+            )
+        }
+        actions = $actionsObj
+    }
+    if ($alertDef.displayName) {
+        $alertProperties['displayName'] = $alertDef.displayName
+    }
+
+    $alertBody = @{
+        location   = $Location
+        tags       = $Tags
+        properties = $alertProperties
+    } | ConvertTo-Json -Depth 15 -Compress
+
+    Invoke-ArmRequest -Method 'PUT' `
+        -Uri "https://management.azure.com${alertResourceId}?api-version=2023-03-15-preview" `
+        -Body $alertBody | Out-Null
+    Write-Host "    Created alert: $($alertDef.name)" -ForegroundColor Green
 }
 
 # ══════════════════════════════════════════════════════════════════════════════

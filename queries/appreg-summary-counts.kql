@@ -5,6 +5,7 @@
 AppRegistrationCredentialExpiry_CL
 | summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
 | extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId
 | summarize
     AppRegs        = dcountif(ApplicationId, ObjectType == 'AppRegistration'),
     EnterpriseApps = dcountif(ApplicationId, ObjectType == 'EnterpriseApp'),

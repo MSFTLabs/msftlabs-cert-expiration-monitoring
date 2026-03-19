@@ -62,16 +62,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ── Auto-discover subscriptions if none supplied ─────────────────────────────
-if ($SubscriptionIds.Count -eq 0) {
-    Write-Output 'No SubscriptionIds provided — discovering all enabled subscriptions...'
-    $SubscriptionIds = (Get-AzSubscription -TenantId $TenantId | Where-Object { $_.State -eq 'Enabled' }).Id
-    Write-Output "  Found $($SubscriptionIds.Count) enabled subscription(s)."
-    if ($SubscriptionIds.Count -eq 0) {
-        throw 'No enabled subscriptions found in tenant. Provide -SubscriptionIds explicitly.'
-    }
-}
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 function Get-ExpiryBand {
@@ -113,6 +103,16 @@ Connect-AzAccount -Identity | Out-Null
 
 $graphToken   = (Get-AzAccessToken -ResourceUrl 'https://graph.microsoft.com').Token
 $monitorToken = (Get-AzAccessToken -ResourceUrl 'https://monitor.azure.com/').Token
+
+# ── Auto-discover subscriptions if none supplied ─────────────────────────────
+if ($SubscriptionIds.Count -eq 0) {
+    Write-Output 'No SubscriptionIds provided — discovering all enabled subscriptions...'
+    $SubscriptionIds = (Get-AzSubscription -TenantId $TenantId | Where-Object { $_.State -eq 'Enabled' }).Id
+    Write-Output "  Found $($SubscriptionIds.Count) enabled subscription(s)."
+    if ($SubscriptionIds.Count -eq 0) {
+        throw 'No enabled subscriptions found in tenant. Provide -SubscriptionIds explicitly.'
+    }
+}
 
 $runId     = [guid]::NewGuid().ToString()
 $collector = 'Runbook-CredentialInventory'
@@ -211,33 +211,37 @@ do {
 # ══════════════════════════════════════════════════════════════════════════════
 Write-Output '── Collecting Enterprise Application certificates ──'
 
-$uri = "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=servicePrincipalType eq 'Application'&`$select=id,appId,displayName,keyCredentials&`$top=999"
+$uri = "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=servicePrincipalType eq 'Application'&`$select=id,appId,displayName,keyCredentials,appOwnerOrganizationId&`$top=999"
 
 do {
     $response = Invoke-RestMethod -Method Get -Uri $uri -Headers @{ Authorization = "Bearer $graphToken" }
 
     foreach ($sp in $response.value) {
+        # Only collect user-created Enterprise Apps (appOwnerOrganizationId matches our tenant)
+        if ([string]$sp.appOwnerOrganizationId -ne $TenantId) { continue }
+
         foreach ($cert in @($sp.keyCredentials)) {
             $endDate = [datetime]$cert.endDateTime
             $days    = [int][math]::Floor(($endDate.ToUniversalTime() - [datetime]::UtcNow).TotalDays)
             $appRegRecords.Add([pscustomobject]@{
-                TimeGenerated          = $nowUtc
-                TenantId               = $TenantId
-                ApplicationObjectId    = $sp.id
-                ApplicationId          = $sp.appId
-                ApplicationDisplayName = $sp.displayName
-                CredentialType         = 'Certificate'
-                CredentialDisplayName  = $cert.displayName
-                CredentialKeyId        = $cert.keyId
-                StartDateUtc           = ([datetime]$cert.startDateTime).ToUniversalTime().ToString('o')
-                EndDateUtc             = $endDate.ToUniversalTime().ToString('o')
-                DaysToExpiry           = $days
-                ExpiryBand             = (Get-ExpiryBand -DaysToExpiry $days)
-                ExpiryColor            = (Get-ExpiryBand -DaysToExpiry $days)
-                IsExpired              = ($days -lt 0)
-                CollectionRunId        = $runId
-                Collector              = $collector
-                ObjectType             = 'EnterpriseApp'
+                TimeGenerated            = $nowUtc
+                TenantId                 = $TenantId
+                ApplicationObjectId      = $sp.id
+                ApplicationId            = $sp.appId
+                ApplicationDisplayName   = $sp.displayName
+                CredentialType           = 'Certificate'
+                CredentialDisplayName    = $cert.displayName
+                CredentialKeyId          = $cert.keyId
+                StartDateUtc             = ([datetime]$cert.startDateTime).ToUniversalTime().ToString('o')
+                EndDateUtc               = $endDate.ToUniversalTime().ToString('o')
+                DaysToExpiry             = $days
+                ExpiryBand               = (Get-ExpiryBand -DaysToExpiry $days)
+                ExpiryColor              = (Get-ExpiryBand -DaysToExpiry $days)
+                IsExpired                = ($days -lt 0)
+                CollectionRunId          = $runId
+                Collector                = $collector
+                ObjectType               = 'EnterpriseApp'
+                AppOwnerOrganizationId   = [string]$sp.appOwnerOrganizationId
             })
         }
     }

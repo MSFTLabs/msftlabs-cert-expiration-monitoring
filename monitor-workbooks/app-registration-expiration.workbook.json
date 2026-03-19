@@ -45,7 +45,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| summarize\n    AppRegs        = dcountif(ApplicationId, ObjectType == 'AppRegistration'),\n    EnterpriseApps = dcountif(ApplicationId, ObjectType == 'EnterpriseApp'),\n    TotalCreds     = countif(CredentialType != 'None'),\n    Expired        = countif(CredentialType != 'None' and IsExpired == true),\n    ExpiringSoon   = countif(CredentialType != 'None' and ExpiryBand == 'Red' and IsExpired == false),\n    NoCreds        = dcountif(ApplicationId, ObjectType == 'AppRegistration' and CredentialType == 'None')\n| project pack_array(\n    pack('Metric', 'App Registrations',         'Value', AppRegs,        'Order', 1),\n    pack('Metric', 'Enterprise Apps',           'Value', EnterpriseApps, 'Order', 2),\n    pack('Metric', 'Total Credentials',         'Value', TotalCreds,     'Order', 3),\n    pack('Metric', 'Expired',                   'Value', Expired,        'Order', 4),\n    pack('Metric', 'Expiring < 30 Days',        'Value', ExpiringSoon,   'Order', 5),\n    pack('Metric', 'Without Credentials',       'Value', NoCreds,        'Order', 6))\n| mv-expand Column1 to typeof(dynamic)\n| evaluate bag_unpack(Column1)\n| sort by Order asc\n| project-away Order",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| summarize\n    AppRegs        = dcountif(ApplicationId, ObjectType == 'AppRegistration'),\n    EnterpriseApps = dcountif(ApplicationId, ObjectType == 'EnterpriseApp'),\n    TotalCreds     = countif(CredentialType != 'None'),\n    Expired        = countif(CredentialType != 'None' and IsExpired == true),\n    ExpiringSoon   = countif(CredentialType != 'None' and ExpiryBand == 'Red' and IsExpired == false),\n    NoCreds        = dcountif(ApplicationId, ObjectType == 'AppRegistration' and CredentialType == 'None')\n| project pack_array(\n    pack('Metric', 'App Registrations',         'Value', AppRegs,        'Order', 1),\n    pack('Metric', 'Enterprise Apps',           'Value', EnterpriseApps, 'Order', 2),\n    pack('Metric', 'Total Credentials',         'Value', TotalCreds,     'Order', 3),\n    pack('Metric', 'Expired',                   'Value', Expired,        'Order', 4),\n    pack('Metric', 'Expiring < 30 Days',        'Value', ExpiringSoon,   'Order', 5),\n    pack('Metric', 'Without Credentials',       'Value', NoCreds,        'Order', 6))\n| mv-expand Column1 to typeof(dynamic)\n| evaluate bag_unpack(Column1)\n| sort by Order asc\n| project-away Order",
         "size": 4,
         "title": "Summary",
         "queryType": 0,
@@ -65,7 +65,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| summarize\n    Total         = count(),\n    Expired       = countif(IsExpired == true),\n    Within30Days  = countif(ExpiryBand == 'Red' and IsExpired == false),\n    Within31_60   = countif(DaysToExpiry >= 31 and DaysToExpiry <= 60),\n    Within61_90   = countif(DaysToExpiry >= 61 and DaysToExpiry <= 90),\n    Over90Days    = countif(ExpiryBand == 'Green')",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| summarize\n    Total         = count(),\n    Expired       = countif(IsExpired == true),\n    Within30Days  = countif(ExpiryBand == 'Red' and IsExpired == false),\n    Within31_60   = countif(DaysToExpiry >= 31 and DaysToExpiry <= 60),\n    Within61_90   = countif(DaysToExpiry >= 61 and DaysToExpiry <= 90),\n    Over90Days    = countif(ExpiryBand == 'Green')",
         "size": 0,
         "title": "SLA Expiration Counts",
         "queryType": 0,
@@ -86,7 +86,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| summarize Count = count() by CredentialType, ObjectType\n| order by ObjectType asc, CredentialType asc",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| summarize Count = count() by CredentialType, ObjectType\n| order by ObjectType asc, CredentialType asc",
         "size": 0,
         "title": "Credential Type Breakdown",
         "queryType": 0,
@@ -101,7 +101,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None'\n| summarize Count = count() by ExpiryBand\n| order by ExpiryBand asc",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| summarize Count = count() by ExpiryBand\n| order by ExpiryBand asc",
         "size": 1,
         "title": "Credentials by Expiry Band",
         "queryType": 0,
@@ -124,7 +124,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None'\n| summarize Count = count() by CredentialType\n| order by CredentialType asc",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| summarize Count = count() by CredentialType\n| order by CredentialType asc",
         "size": 1,
         "title": "Credentials by Type",
         "queryType": 0,
@@ -139,7 +139,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None' and (IsExpired == true or (ExpiryBand == 'Red' and IsExpired == false))\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None' and (IsExpired == true or (ExpiryBand == 'Red' and IsExpired == false))\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc",
         "size": 0,
         "title": "Expiring / Expired Credentials (within 30 Days)",
         "queryType": 0,
@@ -171,7 +171,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let filterOT   = '{ObjectType}';\nlet filterBand = '{ExpiryBand}';\nAppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| where (filterOT == '*' or ObjectType == filterOT)\n| where (filterBand == '*' or ExpiryBand == filterBand)\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc",
+        "query": "let filterOT   = '{ObjectType}';\nlet filterBand = '{ExpiryBand}';\nAppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| where (filterOT == '*' or ObjectType == filterOT)\n| where (filterBand == '*' or ExpiryBand == filterBand)\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc",
         "size": 0,
         "title": "All Credentials — Detail",
         "queryType": 0,

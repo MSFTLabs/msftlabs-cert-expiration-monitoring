@@ -1,4 +1,4 @@
-﻿{
+{
   "title": "App Registration Credential Expiration",
   "tags": ["entra", "app-registration", "credential-expiration", "enterprise-app"],
   "style": "dark",
@@ -14,7 +14,7 @@
       "gridPos": { "h": 5, "w": 3, "x": 0, "y": 0 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType == 'AppRegistration'\n| distinct ApplicationId\n| summarize ['App Registrations'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where ObjectType == 'AppRegistration'\n| distinct ApplicationId\n| summarize ['App Registrations'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "fixedColor": "blue", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "pluginVersion": "11.0.0"
@@ -24,7 +24,7 @@
       "gridPos": { "h": 5, "w": 3, "x": 3, "y": 0 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType == 'EnterpriseApp'\n| distinct ApplicationId\n| summarize ['Enterprise Apps'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where ObjectType == 'EnterpriseApp'\n| distinct ApplicationId\n| summarize ['Enterprise Apps'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "fixedColor": "purple", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "pluginVersion": "11.0.0"
@@ -34,7 +34,7 @@
       "gridPos": { "h": 5, "w": 3, "x": 6, "y": 0 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType == 'AppRegistration' and CredentialType == 'None'\n| distinct ApplicationId\n| summarize ['No Credentials'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where ObjectType == 'AppRegistration' and CredentialType == 'None'\n| distinct ApplicationId\n| summarize ['No Credentials'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "fixedColor": "text", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "pluginVersion": "11.0.0"
@@ -44,7 +44,7 @@
       "gridPos": { "h": 5, "w": 3, "x": 9, "y": 0 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None' and DaysToExpiry >= 0 and DaysToExpiry < 30\n| summarize ['Expiring < 30 Days'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None' and DaysToExpiry >= 0 and DaysToExpiry < 30\n| summarize ['Expiring < 30 Days'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "fixedColor": "orange", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "pluginVersion": "11.0.0"
@@ -54,7 +54,7 @@
       "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None' and IsExpired == true\n| summarize ['Expired'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None' and IsExpired == true\n| summarize ['Expired'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "fixedColor": "red", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] } }, "overrides": [] },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "pluginVersion": "11.0.0"
@@ -64,7 +64,7 @@
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None'\n| summarize Count=count() by ExpiryBand\n| order by ExpiryBand asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| summarize Count=count() by ExpiryBand\n| order by ExpiryBand asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } },
         "overrides": [
           { "matcher": { "id": "byName", "options": "Expired" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
@@ -81,7 +81,7 @@
       "gridPos": { "h": 5, "w": 8, "x": 0, "y": 5 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "let creds = AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None';\nlet r30 = creds | where DaysToExpiry >= 0 and DaysToExpiry <= 30 | count | project Band='30 Days', Count=Count;\nlet r60 = creds | where DaysToExpiry > 30 and DaysToExpiry <= 60 | count | project Band='60 Days', Count=Count;\nlet r90 = creds | where DaysToExpiry > 60 and DaysToExpiry <= 90 | count | project Band='90 Days', Count=Count;\nunion r30, r60, r90", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "let creds = AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None';\nlet r30 = creds | where DaysToExpiry >= 0 and DaysToExpiry <= 30 | count | project Band='30 Days', Count=Count;\nlet r60 = creds | where DaysToExpiry > 30 and DaysToExpiry <= 60 | count | project Band='60 Days', Count=Count;\nlet r90 = creds | where DaysToExpiry > 60 and DaysToExpiry <= 90 | count | project Band='90 Days', Count=Count;\nunion r30, r60, r90", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "orange", "value": 15 }, { "color": "red", "value": 30 }] }, "max": 50 }, "overrides": [] },
       "options": { "displayMode": "gradient", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^Count$/", "values": true }, "showUnfilled": true, "valueMode": "color" },
       "pluginVersion": "11.0.0"
@@ -91,7 +91,7 @@
       "gridPos": { "h": 5, "w": 8, "x": 8, "y": 5 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| summarize Count = count() by ObjectType, CredentialType\n| order by ObjectType asc, CredentialType asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| summarize Count = count() by ObjectType, CredentialType\n| order by ObjectType asc, CredentialType asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "custom": { "cellOptions": { "type": "auto" }, "filterable": true } }, "overrides": [] },
       "options": { "cellHeight": "sm", "showHeader": true, "footer": { "show": true, "reducer": ["sum"], "countRows": false, "fields": ["Count"] }, "sortBy": [{ "desc": true, "displayName": "Count" }] },
       "pluginVersion": "11.0.0"
@@ -101,7 +101,7 @@
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| where DaysToExpiry <= 30 or IsExpired == true\n| project ObjectType, ApplicationDisplayName, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand\n| sort by DaysToExpiry asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| where DaysToExpiry <= 30 or IsExpired == true\n| project ObjectType, ApplicationDisplayName, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand\n| sort by DaysToExpiry asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 0 }, { "color": "yellow", "value": 15 }, { "color": "green", "value": 30 }] }, "custom": { "cellOptions": { "type": "auto" }, "filterable": true } },
         "overrides": [
           { "matcher": { "id": "byName", "options": "DaysToExpiry" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } }, { "id": "min", "value": -30 }, { "id": "max", "value": 30 }] },
@@ -115,7 +115,7 @@
       "gridPos": { "h": 14, "w": 24, "x": 0, "y": 18 },
       "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
       "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
-        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+        "azureLogAnalytics": { "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where ObjectType != 'EnterpriseApp' or column_ifexists('AppOwnerOrganizationId', '') == TenantId\n| where CredentialType != 'None'\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 30 }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 91 }] }, "custom": { "cellOptions": { "type": "auto" }, "filterable": true } },
         "overrides": [
           { "matcher": { "id": "byName", "options": "DaysToExpiry" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } }, { "id": "min", "value": -30 }, { "id": "max", "value": 365 }] },

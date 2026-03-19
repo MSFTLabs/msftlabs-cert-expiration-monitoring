@@ -1,0 +1,20 @@
+{
+  "name": "alert-keyvault-cert-summary",
+  "displayName": "Summary — Key Vault Certificates Expiring in 30 Days",
+  "description": "Fires one alert containing a table of all Key Vault certificates expiring in exactly 30 days. The email body includes vault name, item name, subscription, and days remaining. Only fires once per item at the 30-day mark.",
+  "severity": 3,
+  "evaluationFrequency": "PT24H",
+  "windowSize": "P2D",
+  "autoMitigate": false,
+  "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| where ItemType == 'Certificate' and HasExpiration == true and DaysToExpiry == 30\n| project VaultName, ItemName, ItemType, DaysToExpiry, ExpiresOn, SubscriptionId, ResourceGroup, ExpiryBand\n| sort by DaysToExpiry asc",
+  "dimensions": [],
+  "customProperties": {
+    "AlertCategory": "Credential Expiration Summary",
+    "CredentialStore": "Key Vault",
+    "CredentialType": "Certificate",
+    "MonitoringSolution": "Credential Inventory"
+  },
+  "conditionOperator": "GreaterThan",
+  "conditionThreshold": 0,
+  "conditionMeasure": "count"
+}

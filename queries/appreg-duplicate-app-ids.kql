@@ -5,6 +5,7 @@
 AppRegistrationCredentialExpiry_CL
 | summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
 | where ObjectType == 'EnterpriseApp'
+| where column_ifexists('AppOwnerOrganizationId', '') == TenantId
 | distinct ApplicationDisplayName, ApplicationId, ApplicationObjectId
 | summarize
     ObjectIdCount = count(),
