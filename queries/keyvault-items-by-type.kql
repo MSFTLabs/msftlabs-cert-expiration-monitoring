@@ -1,0 +1,8 @@
+// Key Vault — Items by Type (Pie Chart)
+// Used by: Grafana Dashboard (piechart), Workbook (piechart)
+// Returns: Item counts grouped by ItemType (Certificate, Key, Secret)
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| summarize Count = count() by ItemType
+| order by ItemType asc

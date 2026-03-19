@@ -1,0 +1,13 @@
+// Collection Run History — Recent Runbook Executions
+// Returns: Each collection run, its timestamp, record count, and ObjectType breakdown
+
+AppRegistrationCredentialExpiry_CL
+| summarize
+    RunTimestamp  = min(TimeGenerated),
+    TotalRecords  = count(),
+    AppRegs       = countif(ObjectType == 'AppRegistration'),
+    EnterpriseApp = countif(ObjectType == 'EnterpriseApp'),
+    Collector     = take_any(Collector)
+    by CollectionRunId
+| order by RunTimestamp desc
+| take 30

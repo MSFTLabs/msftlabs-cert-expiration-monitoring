@@ -1,0 +1,12 @@
+// App Registration & Enterprise App — SLA Expiration Counts (30/60/90 Day Buckets)
+// Used by: Azure Portal Dashboard (table), Grafana Dashboard (bar gauge)
+// Returns: Count of credentials in each SLA window
+
+let creds = AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| where CredentialType != 'None';
+let r30 = creds | where DaysToExpiry >= 0 and DaysToExpiry <= 30  | count | project Band = '30 Days',  Count = Count;
+let r60 = creds | where DaysToExpiry > 30 and DaysToExpiry <= 60  | count | project Band = '60 Days',  Count = Count;
+let r90 = creds | where DaysToExpiry > 60 and DaysToExpiry <= 90  | count | project Band = '90 Days',  Count = Count;
+union r30, r60, r90
+| sort by Band asc

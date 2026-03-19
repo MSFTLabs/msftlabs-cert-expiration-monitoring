@@ -1,0 +1,9 @@
+// Enterprise Application Certificates Only
+// Returns: Certificates from service principals (ObjectType == 'EnterpriseApp')
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| where ObjectType == 'EnterpriseApp'
+| project ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName,
+    EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired
+| order by DaysToExpiry asc, ApplicationDisplayName asc

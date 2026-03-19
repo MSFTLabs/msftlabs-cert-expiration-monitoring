@@ -1,0 +1,9 @@
+// Key Vault — Disabled Items
+// Returns: Items where Enabled == false — may indicate intentional rotation or issues
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where Enabled == false
+| project VaultName, SubscriptionId, ResourceGroup, ItemType, ItemName,
+    ExpiresOn, DaysToExpiry, HasExpiration, ExpiryBand
+| order by VaultName asc, ItemType asc

@@ -1,0 +1,209 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# App Registration Credential Expiration\nThis workbook displays secret and certificate expiration data for App Registrations and Enterprise Applications.\n\nData is collected by the **Publish-CredentialInventory** runbook and stored in **AppRegistrationCredentialExpiry_CL**."
+      },
+      "name": "text - title"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "p-objecttype",
+            "version": "KqlParameterItem/1.0",
+            "name": "ObjectType",
+            "type": 2,
+            "query": "datatable(value:string, label:string)[\n'*', 'All',\n'AppRegistration', 'App Registrations',\n'EnterpriseApp', 'Enterprise Apps'\n]",
+            "typeSettings": { "additionalResourceOptions": [] },
+            "defaultValue": "*",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "label": "Object Type"
+          },
+          {
+            "id": "p-expiryband",
+            "version": "KqlParameterItem/1.0",
+            "name": "ExpiryBand",
+            "type": 2,
+            "query": "datatable(value:string, label:string)[\n'*', 'All',\n'Red', 'Red (< 30 days)',\n'Yellow', 'Yellow (30-90 days)',\n'Green', 'Green (> 90 days)',\n'Expired', 'Expired'\n]",
+            "typeSettings": { "additionalResourceOptions": [] },
+            "defaultValue": "*",
+            "queryType": 0,
+            "resourceType": "microsoft.operationalinsights/workspaces",
+            "label": "Expiry Band"
+          }
+        ]
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| summarize\n    AppRegs        = dcountif(ApplicationId, ObjectType == 'AppRegistration'),\n    EnterpriseApps = dcountif(ApplicationId, ObjectType == 'EnterpriseApp'),\n    TotalCreds     = countif(CredentialType != 'None'),\n    Expired        = countif(CredentialType != 'None' and IsExpired == true),\n    ExpiringSoon   = countif(CredentialType != 'None' and ExpiryBand == 'Red' and IsExpired == false),\n    NoCreds        = dcountif(ApplicationId, ObjectType == 'AppRegistration' and CredentialType == 'None')\n| project pack_array(\n    pack('Metric', 'App Registrations',         'Value', AppRegs,        'Order', 1),\n    pack('Metric', 'Enterprise Apps',           'Value', EnterpriseApps, 'Order', 2),\n    pack('Metric', 'Total Credentials',         'Value', TotalCreds,     'Order', 3),\n    pack('Metric', 'Expired',                   'Value', Expired,        'Order', 4),\n    pack('Metric', 'Expiring < 30 Days',        'Value', ExpiringSoon,   'Order', 5),\n    pack('Metric', 'Without Credentials',       'Value', NoCreds,        'Order', 6))\n| mv-expand Column1 to typeof(dynamic)\n| evaluate bag_unpack(Column1)\n| sort by Order asc\n| project-away Order",
+        "size": 4,
+        "title": "Summary",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": { "columnMatch": "Metric", "formatter": 1 },
+          "leftContent": { "columnMatch": "Value", "formatter": 12, "formatOptions": { "palette": "auto" }, "numberFormat": { "unit": 17, "options": { "style": "decimal", "maximumFractionDigits": 0 } } },
+          "showBorder": true
+        },
+        "showAnalytics": false,
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - summary-tiles"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| summarize\n    Total         = count(),\n    Expired       = countif(IsExpired == true),\n    Within30Days  = countif(ExpiryBand == 'Red' and IsExpired == false),\n    Within31_60   = countif(DaysToExpiry >= 31 and DaysToExpiry <= 60),\n    Within61_90   = countif(DaysToExpiry >= 61 and DaysToExpiry <= 90),\n    Over90Days    = countif(ExpiryBand == 'Green')",
+        "size": 0,
+        "title": "SLA Expiration Counts",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "Expired",      "formatter": 18, "formatOptions": { "thresholdsOptions": "icons", "thresholdsGrid": [{ "operator": ">", "thresholdValue": "0", "representation": "4", "text": "{0}{1}" }, { "operator": "Default", "representation": "success", "text": "{0}{1}" }] } },
+            { "columnMatch": "Within30Days", "formatter": 18, "formatOptions": { "thresholdsOptions": "icons", "thresholdsGrid": [{ "operator": ">", "thresholdValue": "0", "representation": "2", "text": "{0}{1}" }, { "operator": "Default", "representation": "success", "text": "{0}{1}" }] } }
+          ]
+        },
+        "showAnalytics": true,
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - sla-counts"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| summarize Count = count() by CredentialType, ObjectType\n| order by ObjectType asc, CredentialType asc",
+        "size": 0,
+        "title": "Credential Type Breakdown",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "showAnalytics": true,
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - type-breakdown"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None'\n| summarize Count = count() by ExpiryBand\n| order by ExpiryBand asc",
+        "size": 1,
+        "title": "Credentials by Expiry Band",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart",
+        "chartSettings": {
+          "seriesLabelSettings": [
+            { "seriesName": "Red",     "color": "red" },
+            { "seriesName": "Yellow",  "color": "yellow" },
+            { "seriesName": "Green",   "color": "green" },
+            { "seriesName": "Expired", "color": "gray" }
+          ]
+        },
+        "showAnalytics": true,
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - band-pie"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| where CredentialType != 'None'\n| summarize Count = count() by CredentialType\n| order by CredentialType asc",
+        "size": 1,
+        "title": "Credentials by Type",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart",
+        "showAnalytics": true,
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - type-pie"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None' and (IsExpired == true or (ExpiryBand == 'Red' and IsExpired == false))\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc",
+        "size": 0,
+        "title": "Expiring / Expired Credentials (within 30 Days)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "ExpiryBand",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "Red",     "representation": "red",      "text": "{0}{1}" },
+                  { "operator": "==", "thresholdValue": "Expired", "representation": "gray",     "text": "{0}{1}" },
+                  { "operator": "Default",                         "representation": "lightBlue", "text": "{0}{1}" }
+                ]
+              }
+            }
+          ]
+        },
+        "showAnalytics": true,
+        "exportToExcelOptions": "visible",
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - expiring-detail"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let filterOT   = '{ObjectType}';\nlet filterBand = '{ExpiryBand}';\nAppRegistrationCredentialExpiry_CL\n| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId\n| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)\n| where CredentialType != 'None'\n| where (filterOT == '*' or ObjectType == filterOT)\n| where (filterBand == '*' or ExpiryBand == filterBand)\n| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType, CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, ApplicationDisplayName asc",
+        "size": 0,
+        "title": "All Credentials — Detail",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "ExpiryBand",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "Red",     "representation": "red",      "text": "{0}{1}" },
+                  { "operator": "==", "thresholdValue": "Yellow",  "representation": "yellow",   "text": "{0}{1}" },
+                  { "operator": "==", "thresholdValue": "Green",   "representation": "green",    "text": "{0}{1}" },
+                  { "operator": "==", "thresholdValue": "Expired", "representation": "gray",     "text": "{0}{1}" },
+                  { "operator": "Default",                         "representation": "lightBlue", "text": "{0}{1}" }
+                ]
+              }
+            }
+          ]
+        },
+        "showAnalytics": true,
+        "exportToExcelOptions": "visible",
+        "timeContext": { "durationMs": 2592000000 }
+      },
+      "name": "query - detail-table"
+    }
+  ],
+  "isLocked": false,
+  "fallbackResourceIds": [
+    "/subscriptions/b18ea7d6-14b5-41f3-a00d-804a5180c589/resourceGroups/msft-core-observability/providers/Microsoft.OperationalInsights/workspaces/msft-core-cus-law"
+  ]
+}

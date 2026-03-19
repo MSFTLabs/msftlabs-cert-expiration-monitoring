@@ -1,0 +1,14 @@
+// Key Vault — Item Counts by Subscription
+// Returns: Per-subscription summary of vaults and items
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| summarize
+    Vaults       = dcount(VaultName),
+    Certificates = countif(ItemType == 'Certificate'),
+    Keys         = countif(ItemType == 'Key'),
+    Secrets      = countif(ItemType == 'Secret'),
+    Total        = count(),
+    Expired      = countif(IsExpired == true)
+    by SubscriptionId
+| order by Total desc

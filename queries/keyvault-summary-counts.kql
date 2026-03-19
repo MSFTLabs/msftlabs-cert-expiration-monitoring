@@ -1,0 +1,28 @@
+// Key Vault — Summary KPI Cards
+// Used by: Azure Portal Dashboard (tiles), Grafana stat panels, Workbook (summary tiles)
+// Returns: Total Vaults, Total Items, Certificates, Keys, Secrets, Expired, Expiring Soon, No Expiry
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| summarize
+    TotalVaults  = dcount(VaultName),
+    TotalItems   = count(),
+    Certificates = countif(ItemType == 'Certificate'),
+    Keys         = countif(ItemType == 'Key'),
+    Secrets      = countif(ItemType == 'Secret'),
+    Expired      = countif(IsExpired == true),
+    ExpiringSoon = countif(ExpiryBand == 'Red' and IsExpired == false),
+    NoExpiry     = countif(HasExpiration == false)
+| project pack_array(
+    pack('Metric', 'Total Vaults',       'Value', TotalVaults,  'Order', 1),
+    pack('Metric', 'Total Items',        'Value', TotalItems,   'Order', 2),
+    pack('Metric', 'Certificates',       'Value', Certificates, 'Order', 3),
+    pack('Metric', 'Keys',              'Value', Keys,         'Order', 4),
+    pack('Metric', 'Secrets',            'Value', Secrets,      'Order', 5),
+    pack('Metric', 'Expired',            'Value', Expired,      'Order', 6),
+    pack('Metric', 'Expiring < 30 Days', 'Value', ExpiringSoon, 'Order', 7),
+    pack('Metric', 'No Expiry Date',     'Value', NoExpiry,     'Order', 8))
+| mv-expand Column1 to typeof(dynamic)
+| evaluate bag_unpack(Column1)
+| sort by Order asc
+| project-away Order

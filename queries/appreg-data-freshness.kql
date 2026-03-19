@@ -1,0 +1,12 @@
+// Data Freshness — Last Collection Timestamp and Age
+// Returns: When the most recent data was collected and how many hours/minutes ago
+
+AppRegistrationCredentialExpiry_CL
+| summarize LastCollection = max(TimeGenerated)
+| extend AgeMinutes = datetime_diff('minute', now(), LastCollection)
+| extend AgeHours   = round(AgeMinutes / 60.0, 1)
+| project LastCollection, AgeMinutes, AgeHours,
+    Status = case(
+        AgeHours <= 24, 'Healthy',
+        AgeHours <= 48, 'Warning',
+        'Stale')

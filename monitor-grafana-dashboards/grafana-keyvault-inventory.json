@@ -1,0 +1,116 @@
+﻿{
+  "title": "Key Vault Credential Inventory",
+  "tags": ["keyvault", "credential-inventory", "credential-expiration"],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1h",
+  "time": { "from": "now-7d", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1, "title": "Total Vaults", "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| distinct VaultName\n| summarize ['Total Vaults'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "blue", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 2, "title": "Total Items", "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 3, "y": 0 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| summarize ['Total Items'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "super-light-blue", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "super-light-blue", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 3, "title": "Expiring ≤ 30 Days", "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 6, "y": 0 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| where HasExpiration == true and DaysToExpiry >= 0 and DaysToExpiry <= 30\n| summarize ['Expiring ≤ 30d'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "orange", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 4, "title": "Expired", "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 9, "y": 0 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| where IsExpired == true\n| summarize ['Expired'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "red", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 8, "title": "No Expiry Set", "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| where HasExpiration == false\n| summarize ['No Expiry Set'] = count()", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "fixedColor": "text", "mode": "fixed" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 5, "title": "Items by Type", "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| summarize Count=count() by ItemType\n| order by ItemType asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Certificate" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Key" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Secret" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] }
+        ] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^Count$/", "values": false }, "tooltip": { "mode": "single" } },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 6, "title": "SLA Expiration Counts", "type": "bargauge",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 5 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "let items = KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| where HasExpiration == true;\nlet r30 = items | where DaysToExpiry >= 0 and DaysToExpiry <= 30 | count | project Band='30 Days', Count=Count;\nlet r60 = items | where DaysToExpiry > 30 and DaysToExpiry <= 60 | count | project Band='60 Days', Count=Count;\nlet r90 = items | where DaysToExpiry > 60 and DaysToExpiry <= 90 | count | project Band='90 Days', Count=Count;\nunion r30, r60, r90", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "orange", "value": 50 }, { "color": "red", "value": 100 }] }, "max": 200 }, "overrides": [] },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^Count$/", "values": true }, "showUnfilled": true, "valueMode": "color" },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 9, "title": "Expiring / Expired (≤ 30 Days)", "type": "table",
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 5 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| where HasExpiration == true\n| where DaysToExpiry <= 30 or IsExpired == true\n| project VaultName, ItemType, ItemName, Enabled, ExpiresOn, DaysToExpiry, ExpiryBand\n| sort by DaysToExpiry asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 0 }, { "color": "yellow", "value": 15 }, { "color": "green", "value": 30 }] }, "custom": { "cellOptions": { "type": "auto" }, "filterable": true } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "DaysToExpiry" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } }, { "id": "min", "value": -30 }, { "id": "max", "value": 30 }] }
+        ] },
+      "options": { "cellHeight": "sm", "showHeader": true, "footer": { "show": true, "reducer": ["count"], "countRows": true }, "sortBy": [{ "desc": false, "displayName": "DaysToExpiry" }] },
+      "pluginVersion": "11.0.0"
+    },
+    {
+      "id": 7, "title": "Credential Inventory — All Key Vaults", "type": "table",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 10 },
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "Azure Monitor" },
+      "targets": [{ "queryType": "Azure Log Analytics", "refId": "A", "subscription": "__WORKSPACE_SUB__",
+        "azureLogAnalytics": { "query": "KeyVaultCredentialInventory_CL\n| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName\n| project SubscriptionId, ResourceGroup, VaultName, ItemType, ItemName, Enabled, ExpiresOn, DaysToExpiry, HasExpiration, ExpiryBand, IsExpired\n| order by DaysToExpiry asc, VaultName asc", "resources": ["__WORKSPACE_RESOURCE_ID__"], "resultFormat": "table" }}],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 30 }, { "color": "yellow", "value": 60 }, { "color": "green", "value": 91 }] }, "custom": { "cellOptions": { "type": "auto" }, "filterable": true } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "DaysToExpiry" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } }, { "id": "min", "value": -30 }, { "id": "max", "value": 365 }] },
+          { "matcher": { "id": "byName", "options": "IsExpired" }, "properties": [{ "id": "mappings", "value": [{ "options": { "false": { "color": "green", "index": 0, "text": "Active" }, "true": { "color": "red", "index": 1, "text": "EXPIRED" } }, "type": "value" }] }] },
+          { "matcher": { "id": "byName", "options": "Enabled" }, "properties": [{ "id": "mappings", "value": [{ "options": { "false": { "color": "orange", "index": 0, "text": "Disabled" }, "true": { "color": "green", "index": 1, "text": "Enabled" } }, "type": "value" }] }] }
+        ] },
+      "options": { "cellHeight": "sm", "showHeader": true, "footer": { "show": true, "reducer": ["count"], "countRows": true }, "sortBy": [{ "desc": false, "displayName": "DaysToExpiry" }] },
+      "pluginVersion": "11.0.0"
+    }
+  ]
+}

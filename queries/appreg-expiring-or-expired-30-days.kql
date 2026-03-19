@@ -1,0 +1,12 @@
+// App Registration & Enterprise App — Expiring ≤ 30 Days OR Already Expired
+// Used by: Azure Portal Dashboard tile "Expiring / Expired (≤ 30 Days)"
+// Returns: Credentials that are expired or will expire within 30 days
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| where CredentialType != 'None'
+| where DaysToExpiry <= 30 or IsExpired == true
+| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType,
+    CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired
+| order by DaysToExpiry asc, ApplicationDisplayName asc

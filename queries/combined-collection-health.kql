@@ -1,0 +1,19 @@
+// Combined — Collection Health for Both Data Sources
+// Returns: Freshness status for each data pipeline
+
+let appReg = AppRegistrationCredentialExpiry_CL
+| summarize LastCollection = max(TimeGenerated)
+| extend
+    Source     = 'App Registrations / Enterprise Apps',
+    AgeHours   = round(datetime_diff('minute', now(), LastCollection) / 60.0, 1);
+let kv = KeyVaultCredentialInventory_CL
+| summarize LastCollection = max(TimeGenerated)
+| extend
+    Source     = 'Key Vault Inventory',
+    AgeHours   = round(datetime_diff('minute', now(), LastCollection) / 60.0, 1);
+union appReg, kv
+| extend Status = case(
+    AgeHours <= 24, 'Healthy',
+    AgeHours <= 48, 'Warning',
+    'Stale')
+| project Source, LastCollection, AgeHours, Status

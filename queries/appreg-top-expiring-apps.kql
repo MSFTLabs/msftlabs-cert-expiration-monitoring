@@ -1,0 +1,14 @@
+// Top 20 Apps by Soonest-Expiring Credential
+// Returns: The most urgent credentials to renew, one row per app (closest expiry)
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| where CredentialType != 'None'
+| summarize
+    MinDaysToExpiry = min(DaysToExpiry),
+    CredentialCount = count(),
+    CredentialTypes = make_set(CredentialType)
+    by ObjectType, ApplicationDisplayName, ApplicationId
+| order by MinDaysToExpiry asc
+| take 20

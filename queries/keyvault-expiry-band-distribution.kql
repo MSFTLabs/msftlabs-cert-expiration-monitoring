@@ -1,0 +1,8 @@
+// Key Vault — Expiry Band Distribution (Pie Chart)
+// Used by: Grafana Dashboard (piechart), Workbook (piechart)
+// Returns: Item counts grouped by ExpiryBand (Expired, Red, Yellow, Green, NoExpiry)
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| summarize Count = count() by ExpiryBand
+| order by ExpiryBand asc

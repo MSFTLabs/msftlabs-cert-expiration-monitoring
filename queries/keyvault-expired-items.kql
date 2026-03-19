@@ -1,0 +1,9 @@
+// Key Vault — All Currently Expired Items
+// Returns: Every Key Vault item where IsExpired == true
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where IsExpired == true
+| project VaultName, SubscriptionId, ResourceGroup, ItemType, ItemName, Enabled,
+    ExpiresOn, DaysToExpiry, ExpiryBand
+| order by DaysToExpiry asc, VaultName asc

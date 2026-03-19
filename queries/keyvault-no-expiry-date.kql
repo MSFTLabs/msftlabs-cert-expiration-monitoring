@@ -1,0 +1,9 @@
+// Key Vault — Items Without an Expiration Date
+// Used by: Workbook (table "Items Missing Expiration Dates")
+// Returns: Items where HasExpiration == false — potential compliance gap
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where HasExpiration == false
+| project VaultName, SubscriptionId, ResourceGroup, ItemType, ItemName, Enabled
+| order by VaultName asc, ItemType asc

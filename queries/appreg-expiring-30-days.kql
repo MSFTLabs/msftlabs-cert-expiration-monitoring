@@ -1,0 +1,11 @@
+// App Registration & Enterprise App — Expiring Within 30 Days (Not Yet Expired)
+// Used by: Grafana stat panel "Expiring < 30 Days"
+// Returns: Credentials with 0 ≤ DaysToExpiry < 30
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| where CredentialType != 'None' and DaysToExpiry >= 0 and DaysToExpiry < 30
+| project ObjectType, ApplicationDisplayName, ApplicationId, CredentialType,
+    CredentialDisplayName, EndDateUtc, DaysToExpiry, ExpiryBand
+| order by DaysToExpiry asc, ApplicationDisplayName asc

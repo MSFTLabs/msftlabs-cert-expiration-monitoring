@@ -1,0 +1,11 @@
+// Key Vault — Expiring ≤ 30 Days OR Already Expired
+// Used by: Azure Portal Dashboard tile "Expiring / Expired (≤ 30 Days)"
+// Returns: Items that have expired or will expire within 30 days
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where HasExpiration == true
+| where DaysToExpiry <= 30 or IsExpired == true
+| project VaultName, SubscriptionId, ResourceGroup, ItemType, ItemName, Enabled,
+    ExpiresOn, DaysToExpiry, ExpiryBand, IsExpired
+| order by DaysToExpiry asc, VaultName asc

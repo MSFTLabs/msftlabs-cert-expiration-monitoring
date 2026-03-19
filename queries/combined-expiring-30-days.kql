@@ -1,0 +1,31 @@
+// Combined — All Credentials Expiring Within 30 Days (Both Tables)
+// Union of App Reg/Enterprise App and Key Vault items expiring soon
+// Returns: Unified view across all credential stores
+
+let appRegExpiring = AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| where CredentialType != 'None' and DaysToExpiry >= 0 and DaysToExpiry < 30
+| project
+    Source        = strcat('Entra ID - ', ObjectType),
+    Name          = ApplicationDisplayName,
+    ItemType      = CredentialType,
+    Identifier    = ApplicationId,
+    DaysToExpiry  = DaysToExpiry,
+    ExpiryBand    = ExpiryBand,
+    ExpiresOn     = EndDateUtc,
+    IsExpired     = IsExpired;
+let kvExpiring = KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where HasExpiration == true and DaysToExpiry >= 0 and DaysToExpiry < 30
+| project
+    Source        = strcat('Key Vault - ', VaultName),
+    Name          = ItemName,
+    ItemType      = ItemType,
+    Identifier    = strcat(VaultName, '/', ItemName),
+    DaysToExpiry  = DaysToExpiry,
+    ExpiryBand    = ExpiryBand,
+    ExpiresOn     = tostring(ExpiresOn),
+    IsExpired     = IsExpired;
+union appRegExpiring, kvExpiring
+| order by DaysToExpiry asc

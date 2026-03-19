@@ -1,0 +1,36 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Credential Inventory Solution — Deployment Configuration
+# ══════════════════════════════════════════════════════════════════════════════
+# Copy this file and fill in customer-specific values before running:
+#   .\Deploy-Solution.ps1 -ConfigFile '.\deploy-config.yaml'
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Customer-specific (required) ─────────────────────────────────────────────
+tenantId: ""
+emailAddresses:
+  - "ops@contoso.com"
+resGroup: ""
+workspaceId: ""                    # Leave blank to create a new workspace
+automationAccountId: ""            # Leave blank to create a new automation account
+
+# ── Deployment options ───────────────────────────────────────────────────────
+location: "centralus"
+tags:
+  Environment: "Prod"
+  Owner: "Security"
+createRole: false
+createWorkbooks: false
+
+# ── Resource naming (override to match customer conventions) ─────────────────
+appRegTableName: "AppRegistrationCredentialExpiry_CL"
+appRegDcrName: "dcr-appreg-expiry"
+kvTableName: "KeyVaultCredentialInventory_CL"
+kvDcrName: "dcr-kv-inventory"
+actionGroupName: "ag-credential-inventory"
+automationAccountName: "aa-credential-inventory"
+portalDashboardName: "credential-inventory-dashboard"
+
+# ── Grafana dashboard names ──────────────────────────────────────────────────
+grafanaAppRegDashName: "appreg-cred-expiry-grafana"
+grafanaKvDashName: "kv-cred-inventory-grafana"
+grafanaUnifiedDashName: "unified-cred-inventory-grafana"

@@ -1,0 +1,15 @@
+// Key Vault — Collection Run History
+// Returns: Each collection run, its timestamp, and record counts
+
+KeyVaultCredentialInventory_CL
+| summarize
+    RunTimestamp  = min(TimeGenerated),
+    TotalRecords  = count(),
+    Vaults        = dcount(VaultName),
+    Certificates  = countif(ItemType == 'Certificate'),
+    Keys          = countif(ItemType == 'Key'),
+    Secrets       = countif(ItemType == 'Secret'),
+    Collector     = take_any(Collector)
+    by CollectionRunId
+| order by RunTimestamp desc
+| take 30

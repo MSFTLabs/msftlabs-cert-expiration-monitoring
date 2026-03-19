@@ -1,0 +1,10 @@
+// App Registrations — Certificates Only (Key Credentials)
+// Returns: App registrations with certificate credentials (excludes Enterprise Apps)
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| where ObjectType == 'AppRegistration' and CredentialType == 'Certificate'
+| project ApplicationDisplayName, ApplicationId, CredentialDisplayName,
+    StartDateUtc, EndDateUtc, DaysToExpiry, ExpiryBand, IsExpired
+| order by DaysToExpiry asc, ApplicationDisplayName asc

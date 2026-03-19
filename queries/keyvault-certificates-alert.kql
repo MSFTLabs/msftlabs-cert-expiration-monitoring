@@ -1,0 +1,8 @@
+// Key Vault Alert — Certificates Expiring Within 30 Days
+// Used by: Scheduled alert rule 'alert-kv-cert-expires-30-days'
+// Trigger: count > 0
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where ItemType == 'Certificate' and HasExpiration == true and DaysToExpiry < 30
+| count

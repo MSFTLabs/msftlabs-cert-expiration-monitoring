@@ -1,0 +1,9 @@
+// Key Vault — Items Expiring Within 30 Days (Not Yet Expired)
+// Returns: Items with 0 ≤ DaysToExpiry ≤ 30
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where HasExpiration == true and DaysToExpiry >= 0 and DaysToExpiry <= 30
+| project VaultName, SubscriptionId, ResourceGroup, ItemType, ItemName, Enabled,
+    ExpiresOn, DaysToExpiry, ExpiryBand
+| order by DaysToExpiry asc, VaultName asc

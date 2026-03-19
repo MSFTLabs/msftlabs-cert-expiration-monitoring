@@ -1,0 +1,13 @@
+// Key Vault — Items Per Vault Breakdown
+// Used by: Workbook (table "Items per Vault")
+// Returns: Certificate, Key, and Secret counts for each vault
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| summarize
+    Certificates = countif(ItemType == 'Certificate'),
+    Keys         = countif(ItemType == 'Key'),
+    Secrets      = countif(ItemType == 'Secret'),
+    Total        = count()
+    by VaultName, SubscriptionId
+| order by VaultName asc

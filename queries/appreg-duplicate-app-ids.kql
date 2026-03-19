@@ -1,0 +1,14 @@
+// Duplicate ApplicationId Detection — Enterprise Apps with Multiple Service Principals
+// Identifies service principals that share the same ApplicationId (e.g. Defender
+// security operators that create one SP per subscription).
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| where ObjectType == 'EnterpriseApp'
+| distinct ApplicationDisplayName, ApplicationId, ApplicationObjectId
+| summarize
+    ObjectIdCount = count(),
+    ObjectIds     = make_set(ApplicationObjectId)
+    by ApplicationDisplayName, ApplicationId
+| where ObjectIdCount > 1
+| order by ObjectIdCount desc

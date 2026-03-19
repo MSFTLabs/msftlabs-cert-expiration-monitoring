@@ -1,0 +1,9 @@
+// App Registration & Enterprise App — Expiry Band Distribution (Pie Chart)
+// Used by: Grafana Dashboard (piechart), Workbook (piechart)
+// Returns: Credential count grouped by ExpiryBand (Expired, Red, Yellow, Green)
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| where CredentialType != 'None'
+| summarize Count = count() by ExpiryBand
+| order by ExpiryBand asc

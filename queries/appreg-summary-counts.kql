@@ -1,0 +1,21 @@
+// App Registration & Enterprise App — Summary KPI Cards
+// Used by: Azure Portal Dashboard (tiles), Grafana Dashboard (stat panels), Workbook (summary tiles)
+// Returns: App Registrations count, Enterprise Apps count, Without Credentials count, Expiring/Expired < 30 days count
+
+AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| summarize
+    AppRegs        = dcountif(ApplicationId, ObjectType == 'AppRegistration'),
+    EnterpriseApps = dcountif(ApplicationId, ObjectType == 'EnterpriseApp'),
+    NoCreds        = dcountif(ApplicationId, ObjectType == 'AppRegistration' and CredentialType == 'None'),
+    Expiring       = countif(CredentialType != 'None' and DaysToExpiry < 30)
+| project pack_array(
+    pack('Metric', 'App Registrations',              'Value', AppRegs,        'Order', 1),
+    pack('Metric', 'Enterprise Apps',                 'Value', EnterpriseApps, 'Order', 2),
+    pack('Metric', 'Without Credentials',             'Value', NoCreds,        'Order', 3),
+    pack('Metric', 'Expiring / Expired (< 30 Days)',  'Value', Expiring,       'Order', 4))
+| mv-expand Column1 to typeof(dynamic)
+| evaluate bag_unpack(Column1)
+| sort by Order asc
+| project-away Order

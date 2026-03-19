@@ -1,0 +1,36 @@
+// Combined — Executive Summary Across All Credential Stores
+// Single-row overview for leadership dashboards / status reports
+
+let appReg = AppRegistrationCredentialExpiry_CL
+| summarize arg_max(TimeGenerated, *) by ApplicationId, CredentialKeyId
+| extend ObjectType = iff(isempty(ObjectType), 'AppRegistration', ObjectType)
+| summarize
+    AR_AppRegistrations   = dcountif(ApplicationId, ObjectType == 'AppRegistration'),
+    AR_EnterpriseApps     = dcountif(ApplicationId, ObjectType == 'EnterpriseApp'),
+    AR_TotalCredentials   = countif(CredentialType != 'None'),
+    AR_Expired            = countif(CredentialType != 'None' and IsExpired == true),
+    AR_Expiring30         = countif(CredentialType != 'None' and DaysToExpiry >= 0 and DaysToExpiry < 30),
+    AR_NoCreds            = dcountif(ApplicationId, CredentialType == 'None'),
+    AR_LastCollection     = max(TimeGenerated);
+let kv = KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| summarize
+    KV_TotalVaults        = dcount(VaultName),
+    KV_TotalItems         = count(),
+    KV_Expired            = countif(IsExpired == true),
+    KV_Expiring30         = countif(HasExpiration == true and DaysToExpiry >= 0 and DaysToExpiry <= 30),
+    KV_NoExpiry           = countif(HasExpiration == false),
+    KV_LastCollection     = max(TimeGenerated);
+appReg | join kind=fullouter kv on $left.AR_LastCollection == $right.KV_LastCollection
+| project
+    ['App Registrations']       = AR_AppRegistrations,
+    ['Enterprise Apps']         = AR_EnterpriseApps,
+    ['Entra Credentials']       = AR_TotalCredentials,
+    ['Entra Expired']           = AR_Expired,
+    ['Entra Expiring < 30d']    = AR_Expiring30,
+    ['No Credentials']          = AR_NoCreds,
+    ['Key Vaults']              = KV_TotalVaults,
+    ['KV Items']                = KV_TotalItems,
+    ['KV Expired']              = KV_Expired,
+    ['KV Expiring < 30d']       = KV_Expiring30,
+    ['KV No Expiry Set']        = KV_NoExpiry

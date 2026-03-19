@@ -1,0 +1,10 @@
+// Key Vault — Top 20 Items by Soonest Expiration
+// Returns: The most urgent items to rotate/renew
+
+KeyVaultCredentialInventory_CL
+| summarize arg_max(TimeGenerated, *) by VaultName, ItemType, ItemName
+| where HasExpiration == true
+| project VaultName, SubscriptionId, ResourceGroup, ItemType, ItemName, Enabled,
+    ExpiresOn, DaysToExpiry, ExpiryBand, IsExpired
+| order by DaysToExpiry asc
+| take 20
